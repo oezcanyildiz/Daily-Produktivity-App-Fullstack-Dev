@@ -9,6 +9,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.ozcnyldz.todo_app.config.CustomUserDetails;
+import com.ozcnyldz.todo_app.dto.TodoRequestDTO;
+import com.ozcnyldz.todo_app.dto.TodoResponseDTO;
 import com.ozcnyldz.todo_app.entities.Todo;
 import com.ozcnyldz.todo_app.entities.User;
 import com.ozcnyldz.todo_app.repository.TodoRepository;
@@ -46,89 +48,92 @@ public class TodoServiceImpl implements ITodoServices {
 
 	    return todo;
 	}
+	
+	private TodoResponseDTO mapToResponseDTO(Todo todo) {
+	    return new TodoResponseDTO(
+	        todo.getId(),         
+	        todo.getTitle(),
+	        todo.getDescription(),
+	        todo.isDone(),
+	        todo.getDueTime(),
+	        todo.getDate()        
+	    );
+	}
+
+
+	private Todo mapToEntity(TodoRequestDTO dto) {
+	    Todo todo = new Todo();
+	    todo.setTitle(dto.getTitle());
+	    todo.setDescription(dto.getDescription());
+	    todo.setDone(dto.isDone());
+	    todo.setDueTime(dto.getDueTime());
+
+	    todo.setDate(dto.getDate() != null ? dto.getDate() : LocalDate.now());
+	    return todo;
+	}
+
 
 	@Override
-	public Todo createTodo(Todo todo) {
-		
-		// Validierungen
-		if(todo.getTitle() == null || todo.getTitle().isBlank()){
-			throw new IllegalArgumentException("Title kann nicht leer sein");
-		}
-		if(todo.getDescription()== null || todo.getDescription().isBlank()) {
-			throw new IllegalArgumentException("Daily kann nicht leer sein");
-		}
-		if (todo.getDate() == null) {
-		    todo.setDate(LocalDate.now());
-		}		
-		
-		Long userId = getCurrentUserId();
-		User user = userRepository.findById(userId)
-		.orElseThrow(() -> new IllegalArgumentException("User nicht gefunden"));
+	public TodoResponseDTO createTodo(TodoRequestDTO newTodoDTO) {
+	    Todo newTodo = mapToEntity(newTodoDTO);
 
-		todo.setUser(user);
-		return todoRepository.save(todo);
+	    Long userId = getCurrentUserId();
+	    User user = userRepository.findById(userId)
+	            .orElseThrow(() -> new IllegalArgumentException("User nicht gefunden"));
+
+	    newTodo.setUser(user);
+	    Todo savedTodo = todoRepository.save(newTodo);
+
+	    return mapToResponseDTO(savedTodo);
 	}
+
 	
 	@Override
-	public Todo updateTodo(Long todoId, Todo updatedTodo) {
-		
-		Todo todoFromDb = getTodoForCurrentUser(todoId);
+	public TodoResponseDTO updateTodo(Long todoId, TodoRequestDTO updatedTodoDTO) {
+	    Todo todoFromDb = getTodoForCurrentUser(todoId);
 
-	    // Validierungen
-	    if (updatedTodo.getTitle() == null || updatedTodo.getTitle().isBlank()) {
-	        throw new IllegalArgumentException("Title kann nicht leer sein");
-	    }
-	    if (updatedTodo.getDescription() == null || updatedTodo.getDescription().isBlank()) {
-	        throw new IllegalArgumentException("Daily kann nicht leer sein");
-	    }
-	    if (updatedTodo.getDate() == null) {
-	        updatedTodo.setDate(LocalDate.now());
-	    }
+	    // Falls im DTO kein Datum gesetzt, heute nehmen
+	    LocalDate date = updatedTodoDTO.getDate() != null ? updatedTodoDTO.getDate() : LocalDate.now();
 
-	    // Die Felder des bestehenden Todos aktualisieren
-	    todoFromDb.setTitle(updatedTodo.getTitle());
-	    todoFromDb.setDescription(updatedTodo.getDescription());
-	    todoFromDb.setDate(updatedTodo.getDate());
-	    todoFromDb.setDueTime(updatedTodo.getDueTime());
-	    todoFromDb.setDone(updatedTodo.isDone());
+	    todoFromDb.setTitle(updatedTodoDTO.getTitle());
+	    todoFromDb.setDescription(updatedTodoDTO.getDescription());
+	    todoFromDb.setDate(date);
+	    todoFromDb.setDueTime(updatedTodoDTO.getDueTime());
+	    todoFromDb.setDone(updatedTodoDTO.isDone());
 
-	    return todoRepository.save(todoFromDb);
+	    Todo updated = todoRepository.save(todoFromDb);
+	    return mapToResponseDTO(updated);
 	}
 
 	@Override
-	public void deleteTodo(Long todoId) {
-		
-		Todo todoFromDb = getTodoForCurrentUser(todoId);
-		
-		todoRepository.delete(todoFromDb);
-		
+	public TodoResponseDTO toggleDone(Long id) {
+	    Todo todo = getTodoForCurrentUser(id);
+	    todo.setDone(!todo.isDone());
+	    return mapToResponseDTO(todoRepository.save(todo));
 	}
 
 	@Override
-	public Todo toggleDone(Long todoId) {
-		Todo todoFromDb=getTodoForCurrentUser(todoId);
-		
-		todoFromDb.setDone(!todoFromDb.isDone());
-		return todoRepository.save(todoFromDb);
+	public TodoResponseDTO moveTodo(Long id, LocalDate newDate) {
+	    Todo todo = getTodoForCurrentUser(id);
+	    todo.setDate(newDate);
+	    return mapToResponseDTO(todoRepository.save(todo));
 	}
 
 	@Override
-	public Todo moveTodo(Long todoId, LocalDate newDate) {
-		Todo todoFromDb=getTodoForCurrentUser(todoId);
-		
-		todoFromDb.setDate(newDate);
-		return todoRepository.save(todoFromDb);
-	}
-
-	@Override
-	public List<Todo> getTodosByDate(LocalDate date) {
+	public List<TodoResponseDTO> getTodayTodos() {
 	    Long userId = getCurrentUserId();
+	    LocalDate today = LocalDate.now();
+	    List<Todo> todos = todoRepository.findAllByUserIdAndDate(userId, today);
 
-	    date = LocalDate.now();
-	    
-	    List<Todo> userDayTodos=todoRepository.findAllByUserIdAndDate(userId, date);
-		return userDayTodos;
+	    return todos.stream()
+	                .map(this::mapToResponseDTO)
+	                .toList();
 	}
 
-
+	@Override
+	public void deleteTodo(Long id) {
+	    Todo todo = getTodoForCurrentUser(id);
+	    todoRepository.delete(todo);
+		
+	}
 }

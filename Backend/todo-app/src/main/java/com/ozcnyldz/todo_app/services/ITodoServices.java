@@ -4,21 +4,29 @@ import java.time.LocalDate;
 
 import java.util.List;
 
-import com.ozcnyldz.todo_app.entities.Todo;
+import com.ozcnyldz.todo_app.dto.TodoRequestDTO;
+import com.ozcnyldz.todo_app.dto.TodoResponseDTO;
+
 
 public interface ITodoServices {
 	
-	Todo createTodo(Todo todo);
+    // Todo erstellen
+    TodoResponseDTO createTodo(TodoRequestDTO newTodo);
 
-	Todo updateTodo(Long todoId, Todo updatedTodo);
+    // Todo updaten
+    TodoResponseDTO updateTodo(Long id, TodoRequestDTO updatedTodo);
 
-	void deleteTodo(Long todoId);
-	
-	Todo toggleDone(Long todoId);
+    // Todo löschen
+    void deleteTodo(Long id);
 
-	Todo moveTodo(Long todoId,  LocalDate newDate);
+    // Todo als erledigt / nicht erledigt markieren
+    TodoResponseDTO toggleDone(Long id);
 
-	List<Todo> getTodosByDate(LocalDate date);
+    // Todo auf anderes Datum verschieben
+    TodoResponseDTO moveTodo(Long id, LocalDate newDate);
+
+    // Alle Todos für heute abrufen
+    List<TodoResponseDTO> getTodayTodos();
 
 
 

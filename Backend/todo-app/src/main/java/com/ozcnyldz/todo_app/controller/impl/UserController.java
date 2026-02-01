@@ -1,15 +1,14 @@
 package com.ozcnyldz.todo_app.controller.impl;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
-
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ozcnyldz.todo_app.controller.IUserController;
-import com.ozcnyldz.todo_app.entities.User;
+import com.ozcnyldz.todo_app.dto.ChangeEmailRequestDTO;
+import com.ozcnyldz.todo_app.dto.ChangePasswordRequestDTO;
 import com.ozcnyldz.todo_app.services.IUserServices;
 
 @RestController
@@ -27,24 +26,28 @@ public class UserController implements IUserController{
 	    userServices.deleteCurrentUser();
 	}
 
+	@Override
 	@PutMapping("/password")
-	@Override
-	public User changeUserPassword(
-	@RequestParam String oldPassword,
-	@RequestParam String newPassword,
-	@RequestParam String newPasswordConfirm) {
+	public void changeUserPassword(
+	        @RequestBody ChangePasswordRequestDTO dto) {
 
-
-	return userServices.changePasswordForCurrentUser(oldPassword, newPassword, newPasswordConfirm);
+	    userServices.changePasswordForCurrentUser(
+	        dto.getOldPassword(),
+	        dto.getNewPassword(),
+	        dto.getNewPasswordConfirm()
+	    );
 	}
 
 	@Override
-	@PutMapping("/email/{oldEmail}/{newEmail}")
-	public User updateUserEmail(
-	    @PathVariable String oldEmail,
-	    @PathVariable String newEmail
-	) {
-	    return userServices.updateEmailForCurrentUser(oldEmail, newEmail);
+	@PutMapping("/email")
+	public void updateUserEmail(
+	        @RequestBody ChangeEmailRequestDTO dto) {
+
+	    userServices.updateEmailForCurrentUser(
+	        dto.getOldEmail(),
+	        dto.getNewEmail()
+	    );
 	}
+
 
 }

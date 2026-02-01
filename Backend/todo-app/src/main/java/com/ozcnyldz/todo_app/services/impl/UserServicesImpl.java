@@ -7,10 +7,18 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+
 import com.ozcnyldz.todo_app.config.CustomUserDetails;
+import com.ozcnyldz.todo_app.config.JwtUtil;
+import com.ozcnyldz.todo_app.dto.LoginRequestDTO;
+import com.ozcnyldz.todo_app.dto.LoginResponseDTO;
+import com.ozcnyldz.todo_app.dto.UserRequestDTO;
+import com.ozcnyldz.todo_app.dto.UserResponseDTO;
 import com.ozcnyldz.todo_app.entities.User;
 import com.ozcnyldz.todo_app.repository.UserRepository;
 import com.ozcnyldz.todo_app.services.IUserServices;
+
+
 
 @Service
 public class UserServicesImpl implements IUserServices{
@@ -19,12 +27,16 @@ public class UserServicesImpl implements IUserServices{
 	
 	private final PasswordEncoder passwordEncoder;
 
+	private final JwtUtil jwtUtil;
+
 	public UserServicesImpl(UserRepository userRepository,
-	                        PasswordEncoder passwordEncoder) {
-	    this.userRepository = userRepository;
-	    this.passwordEncoder = passwordEncoder;
+            PasswordEncoder passwordEncoder,
+            JwtUtil jwtUtil) {  
+			this.userRepository = userRepository;
+			this.passwordEncoder = passwordEncoder;
+			this.jwtUtil = jwtUtil;  
 	}
-	
+		
 	//Helper für ID über JWT
 	public Long getCurrentUserId() {
 	    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -36,57 +48,48 @@ public class UserServicesImpl implements IUserServices{
 	    return cud.getUser().getId();
 	}
 
-	@Override
-	public User saveUser(User user) {
+	 @Override
+	    public UserResponseDTO saveUser(UserRequestDTO dto) {
 
-	    if(user.getUserName() == null || user.getUserName().isBlank()) {
-	        throw new IllegalArgumentException("UserName darf nicht leer sein");
-	    }
-	    if(user.getUserEmail() == null || user.getUserEmail().isBlank()) {
-	        throw new IllegalArgumentException("Email darf nicht leer sein");
-	    }
-	    if(user.getUserPassword() == null || user.getUserPassword().isBlank()) {
-	        throw new IllegalArgumentException("Passwort darf nicht leer sein");
-	    }
+	        User user = new User();
+	        user.setUserEmail(dto.getUserEmail());
+	        user.setUserName(dto.getUserName());
+	        user.setUserPassword(
+	            passwordEncoder.encode(dto.getUserPassword())
+	        );
 
-	    if(userRepository.existsByUserEmail(user.getUserEmail())) {
-	        throw new IllegalArgumentException("Email existiert bereits");
-	    }
+	        User savedUser = userRepository.save(user);
 
-	    
-	    //user.setUserPassword(hashPassword(user.getUserPassword()));
-	    String hashedPassword = passwordEncoder.encode(user.getUserPassword());
-	    user.setUserPassword(hashedPassword);
-	    
-	    String trimEmail=user.getUserEmail().trim().toLowerCase();
-	    user.setUserEmail(trimEmail);
-	    
-	    return userRepository.save(user);
-	    
-	}
+	        return new UserResponseDTO(
+	            savedUser.getUserName(),
+	            savedUser.getUserEmail()
+	        );
+	    }
 	
 	
-	@Override
-	public User loginUser(String userEmail, String userPassword) {
-		Optional<User> userOpt = userRepository.findByUserEmail(userEmail);
-		userEmail = userEmail.trim().toLowerCase();
-		if(userOpt.isEmpty()) {
-			throw new IllegalArgumentException("Ungültige email");
-		}
-		
-		User user = userOpt.get();
-
-		if (!passwordEncoder.matches(userPassword, user.getUserPassword())) {
-		throw new IllegalArgumentException("Ungültige password");
-		}
-
-		if (!user.isActive()) {
-		throw new IllegalArgumentException("Benutzer ist deaktiviert");
-		}
-
-		return user;
-	}
-	
+	 @Override
+	 public LoginResponseDTO loginUser(LoginRequestDTO dto) {
+	     // ... Validation ...
+	     String email = dto.getUserEmail().trim().toLowerCase();
+	     String password = dto.getUserPassword();
+	     
+	     User user = userRepository.findByUserEmail(email)
+	         .orElseThrow(() -> new IllegalArgumentException("Ungültige Email"));
+	     
+	     // Passwort-Check
+	     if (!passwordEncoder.matches(password, user.getUserPassword())) {
+	         throw new IllegalArgumentException("Ungültiges Passwort");
+	     }
+	     
+	     
+	     String token = jwtUtil.generateToken(user);
+	     
+	     return new LoginResponseDTO(
+	         token,
+	         user.getUserName(),
+	         user.getUserEmail()
+	     );
+	 }
 
 
 	@Override

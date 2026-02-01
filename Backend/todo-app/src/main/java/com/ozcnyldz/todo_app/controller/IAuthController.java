@@ -1,11 +1,16 @@
 package com.ozcnyldz.todo_app.controller;
 
-import com.ozcnyldz.todo_app.entities.User;
+import com.ozcnyldz.todo_app.dto.LoginRequestDTO;
+import com.ozcnyldz.todo_app.dto.LoginResponseDTO;
+import com.ozcnyldz.todo_app.dto.UserRequestDTO;
+import com.ozcnyldz.todo_app.dto.UserResponseDTO;
+
+
 
 public interface IAuthController {
 	
-	public User saveUser(User user);
+	public UserResponseDTO saveUser(UserRequestDTO dto);
 	
-	public User loginUser(String userEmail, String userPassword);
+	public LoginResponseDTO loginUser(LoginRequestDTO dto);
 
 }
