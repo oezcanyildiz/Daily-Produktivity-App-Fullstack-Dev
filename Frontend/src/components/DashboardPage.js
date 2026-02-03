@@ -5,27 +5,41 @@ import AddTodo from './AddTodo';
 import { getTodosByDate, createTodo, deleteTodo, toggleTodoStatus } from '../Services/todoService';
 import { logout, getCurrentUser } from '../Services/authService';
 
+// Helper to get local date string YYYY-MM-DD
+// Defined outside component to be stable
+const getLocalDateString = (date) => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+};
+
 const DashboardPage = () => {
     const [todos, setTodos] = useState([]);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-    // Helper to get local date string YYYY-MM-DD
-    const getLocalDateString = (date) => {
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    };
-
-    const todayObj = new Date();
-    const [selectedDate, setSelectedDate] = useState(getLocalDateString(todayObj));
+    // Initial state needs today
+    const [selectedDate, setSelectedDate] = useState(() => getLocalDateString(new Date()));
     const [weekDates, setWeekDates] = useState([]);
 
     const user = getCurrentUser();
     const navigate = useNavigate();
 
+    // Define loadTodos BEFORE useEffect that uses it
+    const loadTodos = async (date) => {
+        try {
+            const data = await getTodosByDate(date);
+            // Ensure data is array
+            setTodos(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Error loading todos:', error);
+            setTodos([]);
+        }
+    };
+
     useEffect(() => {
-        // Generate 7 days centered on TODAY (not selected date, per request "today in middle")
+        // Generate 7 days centered on TODAY
+        const todayObj = new Date();
         const dates = [];
         for (let i = -3; i <= 3; i++) {
             const d = new Date(todayObj);
@@ -38,20 +52,15 @@ const DashboardPage = () => {
             });
         }
         setWeekDates(dates);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
-        loadTodos(selectedDate);
-    }, [selectedDate]);
-
-    const loadTodos = async (date) => {
-        try {
-            const data = await getTodosByDate(date);
-            setTodos(Array.isArray(data) ? data : []);
-        } catch (error) {
-            console.error('Error loading todos:', error);
+        if (selectedDate) {
+            loadTodos(selectedDate);
         }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedDate]);
 
     const handleCreateTodo = async (todoData) => {
         try {

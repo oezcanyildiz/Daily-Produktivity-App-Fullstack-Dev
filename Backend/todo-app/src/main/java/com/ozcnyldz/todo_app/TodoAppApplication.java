@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class TodoAppApplication {
 
 	public static void main(String[] args) {
+		System.out.println("Starting TodoApp... Checking Env: " + System.getenv("SPRING_DATASOURCE_URL"));
 		SpringApplication.run(TodoAppApplication.class, args);
 	}
 
